@@ -1,0 +1,14 @@
+<xml>
+<Msg_Type>1</Msg_Type>
+<Time_Start>2</Time_Start>
+<Time_End>3</Time_End>
+<Data_Count>4</Data_Count>
+<Range0>
+	<Start>5</Start>
+	<End>6</End>
+</Range0>
+<Range1>
+	<Start>7</Start>
+	<End>8</End>
+</Range1>
+</xml>

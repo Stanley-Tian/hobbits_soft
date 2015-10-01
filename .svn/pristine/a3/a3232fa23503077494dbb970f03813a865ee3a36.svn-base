@@ -1,0 +1,15 @@
+//pc.php«Î«Û
+<xml>
+<Foot_Size><![CDATA[%s]]></Foot_Size>
+<Left_Length><![CDATA[%s]]></Left_Length>
+<Left_Width_Front><![CDATA[%s]]></Left_Width_Front>
+<Left_Width_Back><![CDATA[%s]]></Left_Width_Back>
+<Left_Fossa><![CDATA[%s]]></Left_Fossa>
+<Right_Length><![CDATA[%s]]></Right_Length>
+<Right_Width_Front><![CDATA[%s]]></Right_Width_Front>
+<Right_Width_Back><![CDATA[%s]]></Right_Width_Back>
+<Right_Fossa><![CDATA[%s]]></Right_Fossa>
+<Verification_Code><![CDATA[%s]]></Verification_Code>
+<Create_Time><![CDATA[%s]]></Create_Time>
+</xml>
+//an.php«Î«Û

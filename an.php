@@ -1,0 +1,5 @@
+<?php
+include 'connect_mysql.php';
+include 'android_api.php';
+$anobj = new androidCallBack();
+$anobj->Respond_Msg($_GET["Msg_ID"]);
