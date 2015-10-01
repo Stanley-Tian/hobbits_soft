@@ -1,0 +1,116 @@
+<?php
+include 'connect_mysql.php';
+@$connect_status = connect_mysql();//连接数据库
+$anobj = new androidCallBack();
+$anobj->Acquire_Access_Status($connect_status);
+$anobj->Respond_Msg($_GET["Msg_ID"]);
+//$cur_time = time();
+//$year = date("Y",$cur_time);
+//$month= date("m",$cur_time);
+//$day  = date("d",$cur_time);
+//$date_start = mktime(0,0,0,$day,$month,$year);//获取开始日期
+//$date_end = mktime(23,59,59,$day,$month,$year);//获取结束日期
+//$date_start = $_GET["Time_Start"];
+//$date_end	= $_GET["Time_End"];
+//$sql_select = "select count(*) as count from foot_info 
+//where 
+//Foot_Size >= 100 and
+//Foot_Size <= 150 and
+//Create_Time > '$date_start' and
+//Create_Time < '$date_end'";
+//
+//@$result =mysql_fetch_array(mysql_query($sql_select)); 
+//
+//$count=$result['count'];
+//
+//$result.=$connect_status."\n".
+//		 "符合条件的结果数量:".$count."\n".
+//		 "date start:".$date_start."\n".
+//		 "date end:".$date_end."\n".
+//		 "";
+//echo $result;
+//echo $year.$month.$day;
+class androidCallBack
+{
+	private $connect_status;
+	public function Respond_Msg($msg_type)
+	{
+		switch($msg_type)
+		{
+			case 1:
+				{
+					$result = $this->Check_by_Time();
+				}
+			break;
+			default:
+
+			break;
+		}
+		$result=iconv("utf-8","gb2312",$result);   //解决中文乱码问题
+		//echo var_dump($result);
+		echo $result;
+	}
+	public function Acquire_Access_Status($input)
+	{
+		$this->connect_status = $input;
+	}
+	private function Calc_Range($date_start,$date_end,$data_count)
+	{
+		$single_time_range = ($date_end+1-$date_start)/$data_count;
+		$column_range = array();
+		for($i=0;$i<$data_count;$i++)
+		{
+			$tmp_start = $date_start+$i*$single_time_range;
+			$tmp_end = $tmp_start+$single_time_range-1;
+			$temp_range = array("start"=>$tmp_start,"end"=>$tmp_end);
+			array_push($column_range,$temp_range);
+		}
+		return $column_range;
+	}
+	private function Check_by_Time()
+	{
+		$date_start = $_GET["Time_Start"];
+		$date_end	= $_GET["Time_End"];
+		$data_count	= $_GET["Data_Count"];
+		//获取每一个小时间段的具体时间开始和结束时间戳
+		$column_range = $this->Calc_Range($date_start,$date_end,$data_count);
+		$column_count = array();
+		//echo var_dump($column_range);
+		for($i=0;$i<$data_count;$i++)
+		{
+			$start = $column_range[$i]['start'];
+			$end = $column_range[$i]['end'];
+			$sql_select = "select count(*) as count from foot_info 
+			where 
+			Create_Time >= '$start' and
+			Create_Time <= '$end'";
+			$selected_data =mysql_fetch_array(mysql_query($sql_select)); 
+			array_push($column_count,$selected_data['count']);
+		}
+		//echo "column count:".var_dump($column_count);
+		$xml_range="";
+		for($i=0;$i<$data_count;$i++)
+		{
+			$count = $column_count[$i];
+			$start = $column_range[$i]['start'];
+			$end = $column_range[$i]['end'];
+			$template = "<Range%d>
+						<Count>%d</Count>
+						<Start>%d</Start>
+						<End>%d</End>
+						</Range%d>
+						";
+			$meat = sprintf($template,$i,$count,$start,$end,$i);
+			$xml_range.=$meat;
+		}
+		$result4 ="<xml>
+					<Msg_Type>%s</Msg_Type>
+					<Time_Start>%s</Time_Start>
+					<Time_End>%s</Time_End>
+					<Data_Count>%s</Data_Count>
+					%s</xml>";
+		$result5 = sprintf($result4,$_GET["Msg_ID"],$_GET["Time_Start"],$_GET["Time_End"],$_GET["Data_Count"],$xml_range);
+		//echo var_dump($result5);
+		return $result5;
+	}
+}

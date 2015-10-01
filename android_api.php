@@ -1,0 +1,172 @@
+<?php
+/**
+ * Created by PhpStorm.
+ * User: Tevil
+ * Date: 2015/9/28
+ * Time: 15:18
+ */
+class androidCallBack
+{
+	private $connect_status;
+	public function Respond_Msg($msg_type)
+	{
+		switch ($msg_type)
+		{
+			case 1:
+			{
+				$result = $this->Check_by_Time();
+			}
+				break;
+			case 2:
+			{
+				$result = $this->Check_by_Foot_Size();
+			}
+			default:
+				
+				break;
+		}
+		$result = iconv("utf-8", "gb2312", $result); //解决中文乱码问题
+		//echo var_dump($result);
+		echo $result;
+	}
+	public function Acquire_Access_Status($input)
+	{
+		$this->connect_status = $input;
+	}
+	private function Calc_Range($date_start, $date_end, $data_count)
+	{
+		$single_time_range = ($date_end+1-$date_start)/$data_count;
+		$column_range      = array();
+		for ($i = 0; $i < $data_count; $i++)
+		{
+			$tmp_start  = $date_start+$i*$single_time_range;
+			$tmp_end    = $tmp_start+$single_time_range-1;
+			$temp_range = array(
+				"start" => $tmp_start,
+				"end" => $tmp_end
+			);
+			array_push($column_range, $temp_range);
+		}
+		return $column_range;
+	}
+	
+	/**
+	 * @param $input    待处理的二维array,里面的每一行的第一个值array[*][0]要存有待查询的具体内容,如:若查询鞋号,里面就要存满38,39,40,...逐一查询每个鞋号的数量多少
+	 * @param $condition 选择查询哪一个字段,如:Foot_Size
+	 * @return mixed    返回输入值的二维array,其里面的每一行的第二个值array[*][1]存有对应查询内容的数量,如:有38号的鞋3双,这个值就为3
+	 */
+	private function Calc_Count($input, $condition, $db_handle)
+	{
+		$i_max = count($input);
+		for ($i = 0; $i < $i_max; $i++)
+		{
+			$single_size  = $input[$i][0];
+			$sql_count    = "select count(*) as count from foot_info
+                          WHERE
+                          $condition = '$single_size'
+                          ";
+			$query_result = $db_handle->query($sql_count);
+			$fetch_result = $query_result->fetch();
+			$input[$i][1] = $fetch_result['count'];
+		}
+		return $input;
+	}
+	private function Check_by_Time()
+	{
+		$date_start   = $_GET["Time_Start"];
+		$date_end     = $_GET["Time_End"];
+		$data_count   = $_GET["Data_Count"];
+		//获取每一个小时间段的具体时间开始和结束时间戳
+		$column_range = $this->Calc_Range($date_start, $date_end, $data_count);
+		$column_count = array();
+		//echo var_dump($column_range);
+		for ($i = 0; $i < $data_count; $i++)
+		{
+			$start         = $column_range[$i]['start'];
+			$end           = $column_range[$i]['end'];
+			$sql_select    = "select count(*) as count from foot_info
+			where
+			Create_Time >= '$start' and
+			Create_Time <= '$end'";
+			$db_obj        = new ConnectDataBase();
+			$db_handle     = $db_obj->connect(); // connect to the mysql database
+			$query_result  = $db_handle->query($sql_select);
+			$selected_data = $query_result->fetch();
+			array_push($column_count, $selected_data['count']);
+		}
+		//echo "column count:".var_dump($column_count);
+		$xml_range = "";
+		for ($i = 0; $i < $data_count; $i++)
+		{
+			$count    = $column_count[$i];
+			$start    = $column_range[$i]['start'];
+			$end      = $column_range[$i]['end'];
+			$template = "<Range%d>
+						<Count>%d</Count>
+						<Start>%d</Start>
+						<End>%d</End>
+						</Range%d>
+						";
+			$meat     = sprintf($template, $i, $count, $start, $end, $i);
+			$xml_range .= $meat;
+		}
+		$result4 = "<xml>
+					<Msg_ID>%s</Msg_ID>
+					<Status>%s</Status>
+					<Time_Start>%s</Time_Start>
+					<Time_End>%s</Time_End>
+					<Data_Count>%s</Data_Count>
+					%s</xml>";
+		$result4 = sprintf($result4, $_GET["Msg_ID"], $this->connect_status, $_GET["Time_Start"], $_GET["Time_End"], $_GET["Data_Count"], $xml_range);
+		return $result4;
+	}
+	private function Check_by_Foot_Size()
+	{
+		$date_start     = $_GET["Time_Start"];
+		$date_end       = $_GET["Time_End"];
+		$foot_size_data = array();
+		$sql_select     = "SELECT DISTINCT(Foot_Size) FROM foot_info
+        WHERE
+        Create_Time >= '$date_start' and
+        Create_Time <= '$date_end' ORDER BY Foot_Size";
+		$db_obj         = new ConnectDataBase();
+		$db_handle      = $db_obj->connect(); // connect to the mysql database
+		$query_result   = $db_handle->query($sql_select);
+		$test           = " ";
+		while ($row = $query_result->fetch())
+		{
+			$test .= $row["Foot_Size"];
+			$temp_array = array(
+				$row["Foot_Size"]
+			);
+			array_push($foot_size_data, $temp_array);
+		}
+		$foot_size_data = $this->Calc_Count($foot_size_data, $_GET["Data_Type"], $db_handle);
+		//echo var_dump($foot_size_data);
+		
+		$xml_range  = "";
+		$data_count = count($foot_size_data);
+		for ($i = 0; $i < $data_count; $i++)
+		{
+			$data     = $foot_size_data[$i][0];
+			$count    = $foot_size_data[$i][1];
+			$template = "<Bar%d>
+                        <Data>%d</Data>
+                        <Count>%d</Count>
+                        </Bar%d>
+						";
+			$meat     = sprintf($template, $i, $data, $count, $i);
+			$xml_range .= $meat;
+		}
+		
+		$result4 = "<xml>
+					<Msg_ID>%s</Msg_ID>
+					<Status>%s</Status>
+					<Time_Start>%s</Time_Start>
+					<Time_End>%s</Time_End>
+					<Data_Type>%s</Data_Type>
+					%s</xml>";
+		$result4 = sprintf($result4, $_GET["Msg_ID"], $this->connect_status, $_GET["Time_Start"], $_GET["Time_End"], $_GET["Data_Type"], $xml_range);
+		return $result4;
+	}
+}
